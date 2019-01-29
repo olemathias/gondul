@@ -304,6 +304,7 @@ class nmsModNet extends nmsModThing {
 	generateBaseTemplate() {
 		this._template = {
 			name: new nmsType("Unique networkname. Only required field. Read/only on existing nets."),
+			vlan: new nmsType("Vlan ID"),
 			gw4: new nmsTypeIP("Gateway address, IPv4"),
 			gw6: new nmsTypeIP("Gateway address, IPv6"),
 			subnet4: new nmsTypeCIDR("Subnet, IPv4"),
