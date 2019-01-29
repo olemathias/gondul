@@ -1,16 +1,16 @@
 "use strict";
 /*
  * Base type. All nmsType* classes represent a logical family of units.
- * This is used to provide input validation on the class-level and 
+ * This is used to provide input validation on the class-level and
  * is used to store the value and description of variables.
  * This is not bound to editing in theory. It is natural to think
  * that nms-map-handlers will leverage the same type-system to
  * verify that things are as they should.
  *
  * An example of future features outside the scope of simply editing stuff:
- *    verify that a nmsTypeIP is contained in nmsTypeNetwork 
+ *    verify that a nmsTypeIP is contained in nmsTypeNetwork
  *    use nmsTypePlace for all placement-logic
- * 
+ *
  * Stuff that should be supported within an editor:
  *    - Validation (duh)
  *    - Hints (auto-complete, parse-error-feedback)
@@ -67,16 +67,16 @@ class nmsType {
 	}
 }
 
-class nmsTypeInterval extends nmsType { 
+class nmsTypeInterval extends nmsType {
 	validate(input) {
 		return !!(input.match(/^\d\d:\d\d:\d\d$/))
 	}
 }
-class nmsTypeIP extends nmsType { 
+class nmsTypeIP extends nmsType {
 	get _defaultPriority() {
 		return nmsPriority.important;
 	}
-	_validateV4(input) { 
+	_validateV4(input) {
 		var x = input.match(/^(\d+)\.(\d+).(\d+).(\d+)$/)
 		if (!x) {
 			this.validationReason = "Doesn't look like IPv4 address or IPv6";
@@ -110,8 +110,48 @@ class nmsTypeIP extends nmsType {
 		}
 	}
 }
-class nmsTypeNetwork extends nmsType { 
-	get _defaultPriority() { 
+class nmsTypeCIDR extends nmsType {
+	get _defaultPriority() {
+		return nmsPriority.important;
+	}
+	_validateV4(input) {
+		var x = input.match(/^(\d+)\.(\d+).(\d+).(\d+)\/(\d+)$/)
+		if (!x) {
+			this.validationReason = "Doesn't look like IPv4 or IPv6 cidr";
+			return false;
+		}
+		for (var i = 1; i < 5; i ++) {
+			if (x[i] < 0  || x[i] > 255) {
+				this.validationReason = "The " + i + "'th octet("+x[i]+") is outside of expected range (0-255)"
+				return false
+			}
+		}
+		if (x[5] < 8 || x[5] > 32) {
+			this.validationReason = "/"+x[5]+" is outside of expected range (8-32)"
+			return false
+		}
+		this.validationReason = "OK"
+		return true;
+	}
+	_validateV6(input) {
+		if (!!input.match(/^[a-fA-F0-9:]+\/(\d+)$/)) {
+			this.validationReason = "OK IPv6 cidr"
+			return true;
+		} else {
+			this.validationReason = "Doesn't parse as a IPv6 cidr despite :";
+			return false;
+		}
+	}
+	validate(input) {
+		if (input.match(":")) {
+			return this._validateV6(input);
+		} else {
+			return this._validateV4(input);
+		}
+	}
+}
+class nmsTypeNetwork extends nmsType {
+	get _defaultPriority() {
 		return nmsPriority.important;
 	}
 	validate(input) {
@@ -147,7 +187,7 @@ class nmsTypeJSON extends nmsType {
 			return false;
 		}
 	}
-	_valueParse(input) { 
+	_valueParse(input) {
 		if (input instanceof Object) {
 			return input;
 		} else {

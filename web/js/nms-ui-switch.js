@@ -3,12 +3,12 @@
 /* Basic editor for switches, and possibly networks and whatever.
  * This is the first real use of both the nmsBox and nmsType, so
  * expect changes as the need(s) arise.
- * 
+ *
  * The general idea is simple, though: Editing and adding is to be treated
  * as similar as possible, and there should be no hard-coding anywhere. If
  * we need a "one-off" for whatever, we should find a genric way of solving
- * it to avoid complicating things. 
- * 
+ * it to avoid complicating things.
+ *
  */
 
 class nmsNewSwitch extends nmsPanel {
@@ -43,8 +43,22 @@ class nmsModThing extends nmsBox {
 		this.add(del)
 	}
 	commit(data) {
+		var place;
+		var tags;
+		for(var v in data[0]){
+			if (v == "placement") {
+				place = JSON.parse(data[0][v]);
+				data[0]["placement"] = place;
+				continue;
+			}
+			if (v == "tags") {
+				place = JSON.parse(data[0][v]);
+				data[0]["tags"] = place;
+				continue;
+			}
+		}
 		$.ajax({
-			type: "POST", 
+			type: "POST",
 			url: this.api,
 			dataType: "text",
 			nmsBox:this,
@@ -64,10 +78,10 @@ class nmsModThing extends nmsBox {
 
 	del(e) {
 		if(confirm("This will delete the " + this.typeName + ":" + this.nmsBox.panel.item)) {
-			this.nmsBox.panel.commit([{'sysname': this.nmsBox.panel.item, 'deleted': true}]); 
+			this.nmsBox.panel.commit([{'sysname': this.nmsBox.panel.item, 'deleted': true}]);
 		};
 	}
-	save(e) { 
+	save(e) {
 		var diff = this.nmsBox.panel.diff()
 		if (diff != undefined) {
 			this.nmsBox.panel.commit([diff])
@@ -91,10 +105,10 @@ class nmsModThing extends nmsBox {
 	 * changes from other sources (e.g.: auto-complete), and we need to
 	 * alert nmsModSwitch that a change has occurred so it can act
 	 * approrpiately (e.g.: Enabling/disabling a save button).
-	 * 
+	 *
 	 * This means that nmsType instances, nmsEditRow instances and
 	 * nmsModSwitch instance is tightly coupled in non-obvious ways.
-	 * 
+	 *
 	 * Which means bugs.
 	 */
 	populate() {
@@ -234,12 +248,12 @@ class nmsEditRow extends nmsBox {
 			this.changed(false)
 			this._content.html.classList.remove("has-success");
 		}
-		this.parent.changed(this) 
+		this.parent.changed(this)
 	}
 }
 class nmsModSwitch extends nmsModThing {
 	constructor(sw) {
-		super({item: sw, identifier: "sysname", invalidate: ["switches","smanagement"], api: "/api/write/switches"})	
+		super({item: sw, identifier: "sysname", invalidate: ["switches","smanagement"], api: "/api/write/switches"})
 	}
 	generateBaseTemplate() {
 		this._template = {
@@ -285,15 +299,15 @@ class nmsModSwitch extends nmsModThing {
 
 class nmsModNet extends nmsModThing {
 	constructor(net) {
-		super({item: net, identifier: "name", invalidate: ["networks","smanagement"], api: "/api/write/networks"})	
+		super({item: net, identifier: "name", invalidate: ["networks","smanagement"], api: "/api/write/networks"})
 	}
 	generateBaseTemplate() {
 		this._template = {
-			name: new nmsTypeNetwork("Unique networkname. Only required field. Read/only on existing nets."),
+			name: new nmsType("Unique networkname. Only required field. Read/only on existing nets."),
 			gw4: new nmsTypeIP("Gateway address, IPv4"),
 			gw6: new nmsTypeIP("Gateway address, IPv6"),
-			subnet4: new nmsTypeIP("Subnet, IPv4"),
-			subnet6: new nmsTypeIP("Subnet, IPv6"),
+			subnet4: new nmsTypeCIDR("Subnet, IPv4"),
+			subnet6: new nmsTypeCIDR("Subnet, IPv6"),
 			router: new nmsTypeSysnameReference("Router where net is terminated. E.g.: r1.noc for floor traffic nets"),
 			tags: new nmsTypeTags("Additional tags in JSON text array format. Can be anything. Used to provide a simple escape hatch mechanism to tag systems.")
 	      }

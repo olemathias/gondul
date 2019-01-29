@@ -172,7 +172,7 @@ nmsMap._resizeEvent = function() {
 	nmsMap._lastName = {};
 	nmsMap._lastInfo = {};
 	if (xScale > yScale) {
-		nmsMap.scale = yScale;	
+		nmsMap.scale = yScale;
 	} else {
 		nmsMap.scale = xScale;
 	}
@@ -497,7 +497,7 @@ nmsMap._connectBoxes = function(box1, box2,color1, color2) {
 	ctx.strokeStyle = gradient;
 	ctx.beginPath();
 	ctx.moveTo(x0,y0);
-	ctx.lineTo(x1,y1); 
+	ctx.lineTo(x1,y1);
 	ctx.lineWidth = 5;
 	ctx.stroke();
 	ctx.closePath();
@@ -565,7 +565,7 @@ nmsMap._moveSubmit = function() {
 	var myData = JSON.stringify([data]);
 	$.ajax({
 		type: "POST",
-		url: "/api/write/switch-update",
+		url: "/api/write/switches",
 		dataType: "text",
 		data:myData,
 		success: function (data, textStatus, jqXHR) {
@@ -639,7 +639,7 @@ function drawLinknets()
  */
 function setLinknetColors(i,c1,c2)
 {
-	if (!nms.linknet_color[i] || 
+	if (!nms.linknet_color[i] ||
  	     nms.linknet_color[i].c1 != c1 ||
 	     nms.linknet_color[i].c2 != c2) {
 		if (!nms.linknet_color[i])
