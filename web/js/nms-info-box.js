@@ -806,6 +806,24 @@ var switchEditPanel = function () {
 nmsInfoBox.addPanelType("switchEdit",switchEditPanel);
 
 /*
+ * Panel type: Edit network
+ *
+ * Lets you edit basic switch and switch management data through the switch-update api
+ *
+ */
+var networkEditPanel = function () {
+	nmsInfoPanel.call(this,"networkEdit");
+	this.refresh = function (reason) {
+		if (this.box) { return; }
+		this.box = new nmsModNet(this.sw);
+		this.box.attach(this.me)
+		this.box.show()
+	};
+
+};
+nmsInfoBox.addPanelType("networkEdit",networkEditPanel);
+
+/*
  * Panel type: Switch comments
  *
  * Displays the current comments and lets you interact with them or add new ones
@@ -855,7 +873,7 @@ nmsInfoBox.addPanelType("switchComments",switchCommentsPanel);
  *
  */
 var switchLatencyPanel = function() {
-	nmsInfoPanel.call(this,"switchLatency");	
+	nmsInfoPanel.call(this,"switchLatency");
 	var latencyChart;
         this.init = function() {
                 this.addHandler("ticker");
@@ -899,7 +917,7 @@ var switchSummaryPanel = function() {
 	};
 	this.refresh = function(reason) {
 		if (this.box) {
-			this.box.refresh(); 
+			this.box.refresh();
 			return;
 		}
 		this.box = new nmsSwitchSummary(this.sw);
@@ -932,7 +950,7 @@ var switchLinks = function() {
 			return;
 		}
 		var sw = this.sw;
-		
+
 		var topp = document.createElement("div")
 		var urls = [ "https://gondul.tg.lol/api/templates/magic.conf/switch=" + sw,
 			     "http://185.110.148.5/api/templates/magic.conf/switch=" + sw,

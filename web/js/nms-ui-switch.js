@@ -321,7 +321,7 @@ class nmsModNet extends nmsModThing {
 		var template = {}
 		for (var v in nets) {
 			console.assert(this._template[v] instanceof nmsType)
-			if (nets[v] != null) {
+			if (nets[v] != null && this._template[v] != null) {
 				this._template[v].initial(nets[v]);
 			}
 		}
