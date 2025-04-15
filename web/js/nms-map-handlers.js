@@ -511,12 +511,13 @@ function pingInfo(sw) {
     try {
       var distro = nmsData["smanagement"]["switches"][sw]["distro_name"];
       var phy = nmsData["smanagement"]["switches"][sw]["distro_phy_port"];
+      var lag = nmsData["smanagement"]["switches"][sw]["distro_lag"];
       if (
         !(distro == "" || phy == "" || distro == undefined || phy == undefined)
       ) {
         ret.data[3] = {};
         ret.data[3].description = "Distro-port";
-        ret.data[3].value = distro + " " + phy;
+        ret.data[3].value = distro + ":" + phy + " (" + lag + ")";
         if (
           testTree(nmsData, [
             "snmp",
@@ -588,6 +589,8 @@ function pingInfo(sw) {
           }
         }
       }
+      // TODO Get URL from API
+      ret.data.push({description: "FAP URL", value: "http://185.110.148.231/ztp/" + sw});
     } catch (e) {
       console.log("Lazy about errors....");
       console.log(e);
