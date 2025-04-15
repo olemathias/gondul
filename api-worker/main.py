@@ -41,36 +41,31 @@ def get_devices():
             "leaf",
             "oob-switch",
             "spine",
+            "utskutt-distro"
         ]
     ):
         # print(device.name)
         distro = None
         uplink = None
+        distro_lag = None
         mgmt_vlan = None
         traffic_vlan = None
 
-        lag_id = None
-
-        # Find distro and distro port through the cable connected on uplink ae.
-        # interfaces = list(nb.dcim.interfaces.filter(device_id=device.id))
-        # for interface in interfaces:
-        #    if interface["type"]["value"] == "lag":
-        #        lag_id = interface["id"]
-        #        if len(interface["tagged_vlans"]) > 0:
-        #            mgmt_vlan = interface["tagged_vlans"][0]["name"]
-        #        if len(interface["tagged_vlans"]) > 1:
-        #            traffic_vlan = interface["tagged_vlans"][1]["name"]
-        #        break
-
-        # if lag_id is not None:
-        #    # get first lag member
-        #    for interface in interfaces:
-        #        if interface["lag"] is not None and interface["lag"]["id"] == lag_id:
-        #            distro = interface["lag"]["device"]["name"]
-        #            #print(distro)
-        #            uplink = interface["name"]
-        #            #print(uplink)
-        #            break
+        lag = None
+        if device.role.slug in ["access-switch", "utskutt-distro"]:
+            lag = nb.dcim.interfaces.get(device_id=device.id, name="ae0")
+            uplink_interfaces = nb.dcim.interfaces.filter(device_id=device.id, lag_id=lag.id)
+            if len(uplink_interfaces) > 0:
+                uplink_interface = next(uplink_interfaces)
+                uplink_device = uplink_interface.connected_endpoints
+                if len(uplink_device) > 0:
+                    uplink = uplink_device[0].name
+                    distro_lag = uplink_device[0].lag.name
+                    distro = uplink_device[0].device.name
+            if lag.untagged_vlan is not None:
+                mgmt_vlan = lag.untagged_vlan.name
+            if device.role.slug == "access-switch" and len(lag.tagged_vlans) > 0:
+                traffic_vlan = lag.tagged_vlans[0].name
 
         if device.custom_fields["gondul_placement"] is None:
             placement = {
@@ -94,6 +89,7 @@ def get_devices():
             {
                 device.name: {
                     "sysname": device.name,
+                    "netbox_id": device.id,
                     "mgmt_v4_addr": (
                         str(netaddr.IPNetwork(device.primary_ip4.address).ip)
                         if device.primary_ip4 is not None
@@ -109,6 +105,7 @@ def get_devices():
                     "last_updated": device.last_updated,
                     "distro_name": distro,
                     "distro_phy_port": uplink,
+                    "distro_lag": distro_lag,
                     "tags": [tag.slug for tag in list(device.tags)],
                     "placement": placement,
                     "serial": device.serial,
@@ -152,7 +149,7 @@ def generateDevices():
 #  }
 
 def getSnmpPorts():
-    switches = {}        
+    switches = {}
     basic = HTTPBasicAuth(os.environ.get("PROM_USER"), os.environ.get("PROM_PASSWORD"))
     prom_url = os.environ.get("PROM_URL")
 
@@ -207,7 +204,7 @@ def getSnmpPorts():
             switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]].update({
                 "ifOperStatus": ifOperStatusMapping[str(metric["value"][1])]
             })
-    
+
 
     ifHighSpeed = requests.get(
         prom_url + "/api/v1/query",
@@ -223,10 +220,10 @@ def getSnmpPorts():
             switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]].update({
                 "ifHighSpeed": metric["value"][1]
             })
-        
+
     cache.set("snmp:ports:updated", round(time.time()))
     cache.set("snmp:ports:data", json.dumps(switches))
-            
+
 def getSnmp():
     output = {}
 
@@ -385,7 +382,7 @@ def dcim_main():
 
 dcim_jobqueue = queue.Queue()
 dcim_scheduler = schedule.Scheduler()
-dcim_scheduler.every(60).seconds.do(dcim_jobqueue.put, generateDevices)
+dcim_scheduler.every(30).seconds.do(dcim_jobqueue.put, generateDevices)
 dcim_worker_thread = threading.Thread(daemon=True, target=dcim_main)
 dcim_worker_thread.start()
 
@@ -415,8 +412,8 @@ def snmp_main():
 
 snmp_jobqueue = queue.Queue()
 snmp_scheduler = schedule.Scheduler()
-snmp_scheduler.every(5).seconds.do(snmp_jobqueue.put, getSnmp)
-snmp_scheduler.every(5).seconds.do(snmp_jobqueue.put, getSnmpPorts)
+snmp_scheduler.every(15).seconds.do(snmp_jobqueue.put, getSnmp)
+snmp_scheduler.every(15).seconds.do(snmp_jobqueue.put, getSnmpPorts)
 snmp_worker_thread = threading.Thread(daemon=True, target=snmp_main)
 snmp_worker_thread.start()
 

@@ -270,10 +270,13 @@ class nmsModSwitch extends nmsModThing {
       mgmt_vlan: new nmsTypeNetwork("Management VLAN"),
       traffic_vlan: new nmsTypeNetwork("Traffic VLAN"),
       distro_name: new nmsTypeSysnameReference(
-        "Distro switch upstream of this system. Required for provisioning."
+        "Distro switch upstream of this system."
       ),
       distro_phy_port: new nmsTypePort(
-        "Name of port we connect to at the distro switch. Used for provisioning, among other things."
+        "Name of port we connect to at the distro switch."
+      ),
+      distro_lag: new nmsTypePort(
+        "Name of lag we connect to at the distro switch."
       ),
       placement: new nmsTypePlace(
         "Map placement (If following a regular naming scheme, the backend will place it poperly, otherwise a random place will be chose)"

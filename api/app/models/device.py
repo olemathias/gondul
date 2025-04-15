@@ -29,6 +29,7 @@ class DeviceInterface(BaseModel):
 
 class DeviceManagement(BaseModel):
     sysname: str = "e1-1"
+    netbox_id: int | None = None
     serial: str | None = None
     platform: str | None = None
     mgmt_v4_addr: ipaddress.IPv4Address | None = None
@@ -38,6 +39,7 @@ class DeviceManagement(BaseModel):
     last_updated: str | None = None
     distro_name: str | None = None
     distro_phy_port: str | None = None
+    distro_lag: str | None = None
     # interfaces: dict[str, DeviceInterface]
 
 

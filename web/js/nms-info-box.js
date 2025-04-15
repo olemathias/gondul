@@ -916,13 +916,22 @@ var switchLinksPanel = function () {
     var domObj = document.createElement("div");
     domObj.className = "gondul-is-private d-grid gap-0 row-gap-3";
     var device = nmsData.smanagement.switches[this.sw]
-    if(["eos64"].includes(device["platform"]) && device["serial"] != null && device["serial"] != "") {
+    // if(["eos64"].includes(device["platform"]) && device["serial"] != null && device["serial"] != "") {
+    // 	var cap = document.createElement("a");
+    // 	cap.textContent = "Open in CVP";
+    // 	cap.href = "https://www.cv-prod-euwest-2.arista.io/cv/devices/overview/" + device["serial"];
+    //   cap.target = "_blank";
+    //   cap.className = "my-4 btn btn-outline-primary";
+    //   cap.role = "button";
+    // 	domObj.appendChild(cap);
+    // }
+    if(device["netbox_id"] != null) {
     	var cap = document.createElement("a");
-    	cap.textContent = "Open in CVP";
-    	cap.href = "https://www.cv-prod-euwest-2.arista.io/cv/devices/overview/" + device["serial"];
-	cap.target = "_blank";
-	cap.className = "my-4 btn btn-outline-primary";
-	cap.role = "button";
+    	cap.textContent = "Open in Netbox";
+    	cap.href = "https://netbox.tg25.tg.no/dcim/devices/" + device["netbox_id"];
+      cap.target = "_blank";
+      cap.className = "my-4 btn btn-outline-primary";
+      cap.role = "button";
     	domObj.appendChild(cap);
     }
     this._render(domObj);
