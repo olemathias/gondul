@@ -17,9 +17,9 @@ async def config(request: Request, response: Response) -> Config:
     # TODO Read from settings
     config = {
         "sitename": f"{settings.PROJECT_NAME} - {settings.ENVIRONMENT}",
-        "publicvhost": "example.gondul.tg.no",
-        "public": False,
-        "shortname": "tgX",
+        "publicvhost": "public-gondul.tg25.tg.no",
+        "public": True if request.headers.get('Host') == "public-gondul.tg25.tg.no" else False,
+        "shortname": "tg25",
     }
 
     etag = hashlib.md5(json.dumps(config, sort_keys=True).encode("utf-8")).hexdigest()
@@ -55,7 +55,7 @@ async def devices(
         "time": cache.get("devices:updated"),
         "hash": etag,
     }
-    
+
 # ping
 @router.get("/ping")
 async def ping(
@@ -71,25 +71,25 @@ async def ping(
 
     output = {}
     ping = json.loads(cache.get("ping:data")) if cache.exists("ping:data") else {}
-    for device in ping:
+    for device, d in ping["data"].items():
         latency4 = (
-            round(ping[device]["v4_rtt"] * 1000, 2)
-            if "v4_rtt" in ping[device] and ping[device]["v4_rtt"] is not None
+            round(d["v4"]["latency"] * 1000, 2)
+            if "v4" in d and d["v4"]["latency"] is not None
             else None
         )
         latency6 = (
-            round(ping[device]["v6_rtt"] * 1000, 2)
-            if "v6_rtt" in ping[device] and ping[device]["v6_rtt"] is not None
+            round(d["v6"]["latency"] * 1000, 2)
+            if "v6" in d and d["v6"]["latency"] is not None
             else None
         )
         age4 = (
-            (time.time() - ping[device]["v4_time"])
-            if "v4_time" in ping[device]
+            (time.time() - d["v4"]["time"])
+            if "v4" in d
             else None
         )
         age6 = (
-            (time.time() - ping[device]["v6_time"])
-            if "v6_time" in ping[device]
+            (time.time() - d["v6"]["time"])
+            if "v6" in d
             else None
         )
         output.update(

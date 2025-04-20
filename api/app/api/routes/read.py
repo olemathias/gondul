@@ -84,7 +84,7 @@ async def snmp(request: Request, response: Response, cache=Depends(get_cache)) -
         output.update(
             {
                 device: {
-                    "ports": ports_data[device]["ports"] if device in ports_data else {},
+                    "ports": ports_data[device] if device in ports_data else {},
                     "misc": {
                         "sysName": {"0": snmp_data[device]["sysName"]},
                         "sysUpTimeInstance": {"": snmp_data[device]["sysUpTime"]},

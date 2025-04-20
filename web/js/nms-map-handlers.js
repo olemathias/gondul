@@ -906,14 +906,14 @@ function snmpInfo(sw) {
     ret.why = "No SNMP data";
     ret.data[0].value = "No data";
     if (testTree(nmsData, ["smanagement", "switches", sw])) {
-      if (
-        nmsData.smanagement.switches[sw].community == undefined ||
-        nmsData.smanagement.switches[sw].community == "disable"
-      ) {
-        ret.score = 0;
-        ret.why = "SNMP disabled";
-        ret.data[0].value = "SNMP disabled";
-      }
+    //  if (
+    //    nmsData.smanagement.switches[sw].community == undefined ||
+    //    nmsData.smanagement.switches[sw].community == "disable"
+    //  ) {
+    //    ret.score = 0;
+    //    ret.why = "SNMP disabled";
+    //    ret.data[0].value = "SNMP disabled";
+    //  }
     }
   } else if (nmsData.snmp.snmp[sw].misc.sysName[0].indexOf(sw) != 0) {
     ret.score = 200;
@@ -979,10 +979,10 @@ function snmpUpInfo(sw) {
     for (var port in nmsData.snmp.snmp[sw].ports) {
       var x = nmsData.snmp.snmp[sw].ports[port];
       if (x["ifAlias"] != null) {
-        if (x["ifAlias"].match(/B:/i) && x["ifOperStatus"] == "up") {
+        if (x["ifAlias"].match(/B:/i) && x["ifAdminStatus"] == "up") {
           total_up += parseInt(x["ifHighSpeed"]);
         }
-        if (x["ifAlias"].match(/G:/i) && x["ifOperStatus"] == "up") {
+        if (x["ifAlias"].match(/G:/i) && x["ifAdminStatus"] == "up") {
           seen_up += parseInt(x["ifHighSpeed"]);
         }
       }

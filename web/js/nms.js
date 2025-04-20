@@ -360,7 +360,7 @@ async function getInitialConfig() {
   document.body.classList.add("gondul-private");
 
   const data = await getData("/api/public/config");
-  if (data["config"]["public"] == "true") {
+  if (data["config"]["public"] == true) {
     nms._public = true;
     document.body.classList.add("gondul-public");
   }

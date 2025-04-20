@@ -3,7 +3,7 @@
 var nmsDhcp = nmsDhcp || {};
 
 nmsDhcp.init = function () {
-  //nmsData.addHandler("dhcpsummary", "nmsDhcpHandler", nmsDhcp.updateSummary);
+  nmsData.addHandler("dhcpsummary", "nmsDhcpHandler", nmsDhcp.updateSummary);
 };
 
 nmsDhcp.updateSummary = function () {
@@ -12,16 +12,16 @@ nmsDhcp.updateSummary = function () {
     return;
   }
   e.innerHTML = "";
-  if (nmsData.dhcpsummary.dhcp[4] != undefined) {
-    e.innerHTML = e.innerHTML + nmsData.dhcpsummary.dhcp[4] + " IPv4 clients";
+  if (nmsData.mactable.arp_count_total != undefined) {
+    e.innerHTML = e.innerHTML + nmsData.dhcpsummary.mactable.arp_count_total + " IPv4 clients";
   }
   if (
-    nmsData.dhcpsummary.dhcp[4] != undefined &&
-    nmsData.dhcpsummary.dhcp[6] != undefined
+    nmsData.dhcpsummary.mactable.arp_count_total != undefined &&
+    nmsData.dhcpsummary.mactable.ndp_count_total != undefined
   ) {
     e.innerHTML = e.innerHTML + " | ";
   }
-  if (nmsData.dhcpsummary.dhcp[6] != undefined) {
-    e.innerHTML = e.innerHTML + nmsData.dhcpsummary.dhcp[6] + " IPv6 clients";
+  if (nmsData.mactable.ndp_count_total != undefined) {
+    e.innerHTML = e.innerHTML + nmsData.dhcpsummary.mactable.ndp_count_total + " IPv6 clients";
   }
 };

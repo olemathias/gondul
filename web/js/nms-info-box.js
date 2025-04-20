@@ -862,7 +862,7 @@ var switchCommentsPanel = function () {
     var domObj = document.createElement("div");
     domObj.className = "gondul-is-private";
     var comments = [];
-    var logs = nmsOplog.getSwitchLogs(this.sw);
+    var logs = nmsOplog.getSwitchLogs(this.sw).reverse();
     var table = document.createElement("table");
     var tr;
     var td1;
@@ -937,7 +937,7 @@ var switchLinksPanel = function () {
     this._render(domObj);
   };
 };
-nmsInfoBox.addPanelType("switchLinks", switchLinksPanel);
+//nmsInfoBox.addPanelType("switchLinks", switchLinksPanel);
 
 /*
  * Panel type: Switch summary

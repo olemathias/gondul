@@ -9,10 +9,12 @@ import os
 import pynetbox
 import random
 import netaddr
-
-import requests
-from requests.auth import HTTPBasicAuth
+import logging
 from dotenv import load_dotenv
+
+from prometheus import getPing, getSnmp, getSnmpPorts, getLastTime
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -44,6 +46,11 @@ def get_devices():
             "utskutt-distro"
         ]
     ):
+        if device.status.value in ["decommissioning", "offline"]:
+            continue
+        # tmp hack to remove vc members
+        if device.name in ["d1-ring-tele", "d1-ring-south", "d1-ring-swing", "d1-ring-north", "d1-ring-log", "r2-tele"]:
+            continue
         # print(device.name)
         distro = None
         uplink = None
@@ -120,256 +127,38 @@ def get_devices():
 
 
 def generateDevices():
-    start_time = time.time()
-    print("Updating device cache")
-    cache.set("devices:updated", round(time.time()))
-    cache.set("devices:data", json.dumps(get_devices()))
-    print("Device cache updated")
-    print("--- %s seconds ---" % (time.time() - start_time))
+    try:
+        start_time = time.time()
+        logger.debug("Updating device cache")
+        cache.set("devices:updated", round(time.time()))
+        cache.set("devices:data", json.dumps(get_devices()))
+        logger.debug("Device cache updated")
+        logger.debug("--- %s seconds ---" % (time.time() - start_time))
+    except Exception as e:
+        logger.error(e)
 
-# {
-#     "ifInErrors":"0",
-#     "ifInDiscards":"0",
-#     "ifHCInOctets":"0",
-#     "ifOutDiscards":"0",
-#     "ifName":"ge-0/0/36.0",
-#     "ifAdminStatus":"up",
-#     "ifOperStatus":"lowerLayerDown",
-#     "ifIndex":"588",
-#     "ifOutQLen":"0",
-#     "ifAlias":"",
-#     "ifInUnknownProtos":"0",
-#     "ifOutErrors":"0",
-#     "ifType":"propVirtual",
-#     "ifPhysAddress":"44:f4:77:69:38:67",
-#     "ifHighSpeed":"0",
-#     "ifDescr":"ge-0/0/36.0",
-#     "ifHCOutOctets":"0",
-#     "ifLastChange":"6312"
-#  }
+def generatePing():
+    try:
+        start_time = time.time()
+        logger.debug("Updating ping cache")
+        cache.set("ping:data", json.dumps(getPing()))
+        cache.set("ping:updated", round(float(getLastTime("probe_icmp_duration_seconds", "1m"))))
+        logger.debug("Device ping updated")
+        logger.debug("--- %s seconds ---" % (time.time() - start_time))
+    except Exception as e:
+        logger.error(e)
 
-def getSnmpPorts():
-    switches = {}
-    basic = HTTPBasicAuth(os.environ.get("PROM_USER"), os.environ.get("PROM_PASSWORD"))
-    prom_url = os.environ.get("PROM_URL")
-
-    ifIndex = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "ifType_info"},
-        auth=basic
-    )
-    if ifIndex.ok and ifIndex.json()["status"] == "success":
-        for metric in ifIndex.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in switches:
-                switches[metric["metric"]["sysname"]] = {"ports": {}}
-            if metric["metric"]["ifName"] not in switches[metric["metric"]["sysname"]]["ports"]:
-                switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]] = {}
-            switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]].update({
-                "ifIndex": metric["metric"]["ifIndex"] if "ifIndex" in metric["metric"] else None,
-                "ifAlias": metric["metric"]["ifAlias"] if "ifAlias" in metric["metric"] else None,
-                "ifName": metric["metric"]["ifName"] if "ifName" in metric["metric"] else None,
-                "ifDescr": metric["metric"]["ifDescr"] if "ifDescr" in metric["metric"] else None,
-                "ifType": metric["metric"]["ifType"] if "ifType" in metric["metric"] else None,
-            })
-
-    ifAdminStatusMapping = {"1": "up", "2": "down"}
-    ifAdminStatus = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "ifAdminStatus"},
-        auth=basic
-    )
-    if ifAdminStatus.ok and ifAdminStatus.json()["status"] == "success":
-        for metric in ifAdminStatus.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in switches:
-                switches[metric["metric"]["sysname"]] = {"ports": {}}
-            if metric["metric"]["ifName"] not in switches[metric["metric"]["sysname"]]["ports"]:
-                switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]] = {}
-            switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]].update({
-                "ifAdminStatus": ifAdminStatusMapping[str(metric["value"][1])]
-            })
-
-    # 1-up, 2-down, 3-testing, 4-unknown, 5-dormant, 6-notPresent, 7-lowerLayerDown
-    ifOperStatusMapping = {"1": "up", "2": "down", "3": "testing", "4": "unknown", "5": "dormant", "6": "notPresent", "7": "lowerLayerDown"}
-    ifOperStatus = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "ifOperStatus"},
-        auth=basic
-    )
-    if ifOperStatus.ok and ifOperStatus.json()["status"] == "success":
-        for metric in ifOperStatus.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in switches:
-                switches[metric["metric"]["sysname"]] = {"ports": {}}
-            if metric["metric"]["ifName"] not in switches[metric["metric"]["sysname"]]["ports"]:
-                switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]] = {}
-            switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]].update({
-                "ifOperStatus": ifOperStatusMapping[str(metric["value"][1])]
-            })
-
-
-    ifHighSpeed = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "ifHighSpeed"},
-        auth=basic
-    )
-    if ifHighSpeed.ok and ifHighSpeed.json()["status"] == "success":
-        for metric in ifHighSpeed.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in switches:
-                switches[metric["metric"]["sysname"]] = {"ports": {}}
-            if metric["metric"]["ifName"] not in switches[metric["metric"]["sysname"]]["ports"]:
-                switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]] = {}
-            switches[metric["metric"]["sysname"]]["ports"][metric["metric"]["ifName"]].update({
-                "ifHighSpeed": metric["value"][1]
-            })
-
-    cache.set("snmp:ports:updated", round(time.time()))
-    cache.set("snmp:ports:data", json.dumps(switches))
-
-def getSnmp():
-    output = {}
-
-    basic = HTTPBasicAuth(os.environ.get("PROM_USER"), os.environ.get("PROM_PASSWORD"))
-    prom_url = os.environ.get("PROM_URL")
-    sysUpTime = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "sysUpTime"},
-        auth=basic,
-    )
-    if sysUpTime.ok and sysUpTime.json()["status"] == "success":
-        for metric in sysUpTime.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in output:
-                output[metric["metric"]["sysname"]] = {}
-            if metric["value"][1] == "0":
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': None,
-                    }
-                )
-            else:
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': metric["value"][1],
-                    }
-                )
-
-    sysName = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "sysName"},
-        auth=basic,
-    )
-    if sysName.ok and sysName.json()["status"] == "success":
-        for metric in sysName.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in output:
-                output[metric["metric"]["sysname"]] = {}
-            if metric["value"][1] == "0":
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': None,
-                    }
-                )
-            else:
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': metric["metric"]["sysName"],
-                    }
-                )
-
-    sysDescr = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "sysDescr"},
-        auth=basic,
-    )
-    if sysDescr.ok and sysDescr.json()["status"] == "success":
-        for metric in sysDescr.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in output:
-                output[metric["metric"]["sysname"]] = {}
-            if metric["value"][1] == "0":
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': None,
-                    }
-                )
-            else:
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': metric["metric"]["sysDescr"],
-                    }
-                )
-
-    entPhysicalSerialNum = requests.get(
-        prom_url + "/api/v1/query",
-        params={"query": "entPhysicalSerialNum"},
-        auth=basic,
-    )
-    if entPhysicalSerialNum.ok and entPhysicalSerialNum.json()["status"] == "success":
-        for metric in entPhysicalSerialNum.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in output:
-                output[metric["metric"]["sysname"]] = {}
-            if metric["value"][1] == "0":
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': None,
-                    }
-                )
-            else:
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["__name__"]}_time': metric["value"][0],
-                        f'{metric["metric"]["__name__"]}': metric["metric"][
-                            "entPhysicalSerialNum"
-                        ],
-                    }
-                )
-
-    cache.set("snmp:updated", round(time.time()))
-    cache.set("snmp:data:data", json.dumps(output))
-
-
-def getPing():
-    output = {}
-
-    basic = HTTPBasicAuth(os.environ.get("PROM_USER"), os.environ.get("PROM_PASSWORD"))
-    prom_url = os.environ.get("PROM_URL")
-    probe_icmp_duration_seconds = requests.get(
-        prom_url + "/api/v1/query",
-        params={
-            "query": 'probe_icmp_duration_seconds{phase="rtt"}',
-            "latency_offset": "1ms",
-        },
-        auth=basic,
-    )
-    if (
-        probe_icmp_duration_seconds.ok
-        and probe_icmp_duration_seconds.json()["status"] == "success"
-    ):
-        for metric in probe_icmp_duration_seconds.json()["data"]["result"]:
-            if metric["metric"]["sysname"] not in output:
-                output[metric["metric"]["sysname"]] = {}
-            if metric["value"][1] == "0":
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["type"]}_time': metric["value"][0],
-                        f'{metric["metric"]["type"]}_{metric["metric"]["phase"]}': None,
-                    }
-                )
-            else:
-                output[metric["metric"]["sysname"]].update(
-                    {
-                        f'{metric["metric"]["type"]}_time': metric["value"][0],
-                        f'{metric["metric"]["type"]}_{metric["metric"]["phase"]}': float(
-                            metric["value"][1]
-                        ),
-                    }
-                )
-
-    cache.set("ping:updated", round(time.time()))
-    cache.set("ping:data", json.dumps(output))
+def generateSnmp():
+    try:
+        start_time = time.time()
+        logger.debug("Updating snmp cache")
+        cache.set("snmp:data:data", json.dumps(getSnmp()))
+        cache.set("snmp:ports:data", json.dumps(getSnmpPorts()))
+        cache.set("snmp:updated", round(float(getLastTime("sysName", "5m"))))
+        logger.debug("Device snmp updated")
+        logger.debug("--- %s seconds ---" % (time.time() - start_time))
+    except Exception as e:
+        logger.error(e)
 
 
 # DCIM
@@ -397,10 +186,9 @@ def ping_main():
 
 ping_jobqueue = queue.Queue()
 ping_scheduler = schedule.Scheduler()
-ping_scheduler.every(1).seconds.do(ping_jobqueue.put, getPing)
+ping_scheduler.every(1).seconds.do(ping_jobqueue.put, generatePing)
 ping_worker_thread = threading.Thread(daemon=True, target=ping_main)
 ping_worker_thread.start()
-
 
 # Snmp
 def snmp_main():
@@ -412,8 +200,7 @@ def snmp_main():
 
 snmp_jobqueue = queue.Queue()
 snmp_scheduler = schedule.Scheduler()
-snmp_scheduler.every(15).seconds.do(snmp_jobqueue.put, getSnmp)
-snmp_scheduler.every(15).seconds.do(snmp_jobqueue.put, getSnmpPorts)
+snmp_scheduler.every(15).seconds.do(snmp_jobqueue.put, generateSnmp)
 snmp_worker_thread = threading.Thread(daemon=True, target=snmp_main)
 snmp_worker_thread.start()
 
